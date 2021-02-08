@@ -2,10 +2,10 @@ import os
 import subprocess
 import numpy as np
 
-import UniDec.unidec_modules.unidectools as ud
+import unidec_modules.unidectools as ud
 from unidec_modules import peakstructure, unidec_enginebase
 from metaunidec.mudstruct import MetaDataSet
-import UniDec.unidec_modules.mzmlparse_auto as automzml
+import unidec_modules.mzmlparse_auto as automzml
 import time
 
 __author__ = 'Michael.Marty'
