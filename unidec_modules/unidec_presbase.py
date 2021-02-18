@@ -69,7 +69,7 @@ class UniDecPres(object):
         :param file_name: Path of file to save config to
         :return: None
         """
-        self.view.export_gui_to_config()
+        # self.view.export_gui_to_config()
         if file_name is not None:
             extension = os.path.splitext(file_name)[1]
             if extension == ".hdf5":
