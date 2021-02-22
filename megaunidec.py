@@ -1,6 +1,6 @@
 from unidec_modules import mzmlparse_auto as automzml
 import unidec
-from unidec_modules import ChromEng as chrom
+from unidec_modules.ChromEng import *
 from UniChrom2 import *
 from pathlib import Path
 import os
@@ -12,16 +12,16 @@ from metaunidec.mudeng import *
 class MegaUniDec():
     def __init__(self):
         # initiate UniChrome and MetaUniDec
-        self.app = ChromApp()
+        self.chrom = ChromEngine()
         self.meta = MetaUniDec()
 
     def import_mzml(self, path, show_tic = True):
         
         self.path = path 
         self.dirname, self.filename = os.path.split(path)
-        self.app.eng.load_mzml(path, load_hdf5=False) # change this eventually
+        self.chrom.load_mzml(path, load_hdf5=False) # change this eventually
 
-        self.tic = self.app.eng.tic
+        self.tic = self.chrom.tic
 
         if show_tic == True:
 
@@ -44,7 +44,7 @@ class MegaUniDec():
         self.update_peaks()
 
         self.chrompeaks_tranges = [[(i-self.peakwindowll)/60, (i+self.peakwindowul)/60]for i in self.peaktimes]
-        self.app.eng.chrompeaks_tranges = self.chrompeaks_tranges # just to be safe and if chom eng is needed again
+        self.chrom.chrompeaks_tranges = self.chrompeaks_tranges # just to be safe and if chom eng is needed again
 
 
     def extract_peaks(self, show_spectra = False):
@@ -53,7 +53,7 @@ class MegaUniDec():
         self.folder = self.dirname+"\\megaunidecfiles_" + self.filename
         Path(self.folder).mkdir(parents = True, exist_ok = True)
         for i, t in enumerate(self.chrompeaks_tranges):
-            data = self.app.eng.get_data_from_times(t[0], t[1])
+            data = self.chrom.get_data_from_times(t[0], t[1])
             filename = "{:.3f}-{:.3f}-mean.txt".format(t[0], t[1])
             np.savetxt(self.folder+"\\"+filename, data, delimiter = "\t")
 

@@ -214,7 +214,7 @@ class mzMLimporter:
         self.times = np.array(newtimes)
         self.ids = np.array(newids)
         self.scans = np.arange(0, len(self.ids))
-        self.data = np.array(self.data)
+        self.data = np.array(self.data, dtype=object) # ljc edit
 
     def get_data_fast_memory_heavy(self, scan_range=None, time_range=None):
         if self.data is None:
