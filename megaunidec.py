@@ -36,7 +36,7 @@ class MegaUniDec():
         print(self.peaktimes)
 
     def define_peaks(self, firstpeak, spacing, total, ll = 5, ul = 5):
-
+        """Manually select peaks in TIC"""
         self.firstpeak, self.peakspacing, self.totalpeaks = firstpeak, spacing, total
         self.peakwindowll = ll
         self.peakwindowul = ul
