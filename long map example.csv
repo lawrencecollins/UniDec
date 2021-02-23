@@ -1,0 +1,8 @@
+Experiment Title:,Test Injection,,,,,,
+Well ID,Type,Protein Name,Protein Concentration,Reagent Name,Reagent Concentration,Concentration Units,Time
+A1,Test,Protein X,10,,10,nM,0
+A2,Test,Protein X,10,,10,nM,30
+A3,Test,Protein X,10,,10,nM,60
+B1,,,,,,,
+B2,,,,,,,
+B3,,,,,,,
