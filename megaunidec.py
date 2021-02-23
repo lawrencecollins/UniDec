@@ -1,5 +1,6 @@
 from unidec_modules import mzmlparse_auto as automzml
 import unidec
+from unidecmodules import unidectools as ud
 from unidec_modules.ChromEng import *
 from UniChrom2 import *
 from pathlib import Path
@@ -16,11 +17,21 @@ class MegaUniDec():
         self.meta = MetaUniDec()
         self.peaks = []
 
+        # Set default params
         # TIC processing
         self.ticlb = 40
         self.ticub = 0 
+        self.fwhmratio = 0.7 # amount of each peak to select
+        self.fwhmoffset = -0.1 # % offset of peak window selection (earlier tends to be better)
+        self.peakwindow = 10 # detection window(local max plus or minus window)
+        self.peakthresh = 0.4 # above threshold of peakthresh * max data intensity
 
-        
+
+        # manual peak selection params
+        self.totalpeaks = None
+        self.firstpeak = None
+        self.peakspacing = None
+        self.peaktotal = None
 
     def import_mzml(self, path, show_tic = True):
         
@@ -39,19 +50,23 @@ class MegaUniDec():
 
 
     def update_peaks(self):
-        self.peaktimes = [self.firstpeak + i*self.peakspacing for i in range(self.totalpeaks)]
+        self.peaktimes = [self.firstpeak + i*self.peakspacing for i in range(self.peaktotal)]
         print(self.peaktimes)
 
     def define_peaks(self, firstpeak, spacing, total, ll = 5, ul = 5):
         """Manually select peaks in TIC"""
-        self.firstpeak, self.peakspacing, self.totalpeaks = firstpeak, spacing, total
+        
+        self.firstpeak, self.peakspacing, self.peaktotal = firstpeak, spacing, total
         self.peakwindowll = ll
         self.peakwindowul = ul
 
         self.update_peaks()
 
-        self.chrompeaks_tranges = [[(i-self.peakwindowll)/60, (i+self.peakwindowul)/60]for i in self.peaktimes]
+        self.chrompeaks_tranges = [[(i-self.peakwindowll)/60, (i+self.peakwindowul)/60] for i in self.peaktimes]
         self.chrom.chrompeaks_tranges = self.chrompeaks_tranges # just to be safe and if chom eng is needed again
+
+    def pick_peaks(self):
+        ud.peakdetect(self.tic, window = self.peakwindow, threshold = self.peakthresh)
 
 
     def extract_peaks(self, show_spectra = False):
