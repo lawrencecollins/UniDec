@@ -14,6 +14,13 @@ class MegaUniDec():
         # initiate UniChrome and MetaUniDec
         self.chrom = ChromEngine()
         self.meta = MetaUniDec()
+        self.peaks = []
+
+        # TIC processing
+        self.ticlb = 40
+        self.ticub = 0 
+
+        
 
     def import_mzml(self, path, show_tic = True):
         
@@ -64,7 +71,7 @@ class MegaUniDec():
                 overwrite = True):
         """Exports text files to hdf5"""
 
-        if plate_map == None: # TO DO: Add plate map stuff
+        if plate_map == None: # TODO: Add plate map stuff
             from_pm = 0 
 
         if hdf5_name == None:
