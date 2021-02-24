@@ -370,10 +370,15 @@ def visualise_all_series(x, y, platemap, share_y, size = 96, title = " ", export
         ax.axis('off')
         ax.text(0.5, 0.5, list(range(1, (wells[size])[1]+1))[i-1], size = 8, ha = "center", va="center")
         
+    indexes = list(platemap.index)  # list of well ids
+    # create a list of tuples, each one containing a row number corresponding to a specified row letter  and col number for all well ids so that there is no need to iterate over the 'Row' and 'Column' columns which are absent in flu_ani platemaps
+    coords = [(ord(item[0].lower()) - 96, int(item[1:])) for item in indexes]
+
+
     # plot plate types in grid, color code and label
-    for i in range(size):
+    for i, coord in enumerate(coords):
         # color code
-        ax = plt.subplot(grid[(ord(platemap['Row'].iloc[i].lower())-96), ((platemap['Column'].iloc[i]))])
+        ax = plt.subplot(grid[coord[0], coord[1]])
         ax.axis('off')
         # set axes
         if share_y == True:

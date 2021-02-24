@@ -46,7 +46,7 @@ class MegaUniDec():
                         'Time':{'dtype':float, 'long':True, 'short_row': True, 'short_col':True},
                             }
         self.plate_size = 96
-        self.plate_map_bool = False
+        self.platemapbool = False
 
     def import_mzml(self, path, show_tic = True):
         
@@ -136,10 +136,10 @@ class MegaUniDec():
     def import_plate_map(self, platemap, size = 96, map_type = 'long'):
         
         if map_type == 'short':
-            platemap = pm.short_map(platemap, size = size)
+            self.platemap = pm.short_map(platemap, size = size)
 
         if map_type == 'long':
-            platemap = pm.plate_map(platemap, size = size)
+            self.platemap = pm.plate_map(platemap, size = size)
 
         # remove empty wells
         filt = platemap['Type'] != 'empty'
@@ -147,7 +147,7 @@ class MegaUniDec():
         self.wells = list(used.index) # get well ID's
         self.time = np.array(used['Time'], dtype = float)
 
-        self.plate_map_bool = True
+        self.platemapbool = True
 
 
     def to_hdf5(self, folder = None, hdf5_name = None, var1 = 0, var2 = 0,
