@@ -10,7 +10,11 @@ import matplotlib.pyplot as plt
 from metaunidec.meta_import_wizard.meta_import_wizard import *  
 from metaunidec.mudeng import *
 
+import megatools as meg 
 import plate_map as pm
+
+
+
 
 class MegaUniDec():
     def __init__(self):
@@ -23,8 +27,7 @@ class MegaUniDec():
         # TIC processing
         self.ticlb = 40
         self.ticub = 0 
-        self.fwhmfrac = 0.7 # amount of each peak to select as a fraction of its FWHM
-        self.fwhmoffset = -0.1 # % offset of peak window selection (earlier tends to be better)
+        self.ticwinoffset = -0.1 # % offset of peak window selection (earlier tends to be better)
         self.peakwindow = 10 # detection window(local max plus or minus window)
         self.peakthresh = 0.4 # above threshold of peakthresh * max data intensity
         # self.ticpeaks = None
@@ -34,6 +37,7 @@ class MegaUniDec():
         self.firstpeak = None
         self.peakspacing = None
         self.peaktotal = None
+        
 
         # plate map 
         self.header_names = {'Well ID': {'dtype':str, 'long':True, 'short_row': False, 'short_col':False},
@@ -45,8 +49,10 @@ class MegaUniDec():
                         'Concentration Units':{'dtype':str, 'long':True, 'short_row': True, 'short_col':True},
                         'Time':{'dtype':float, 'long':True, 'short_row': True, 'short_col':True},
                             }
-        self.plate_size = 96
+        self.platesize = 96
         self.platemapbool = False
+        self.var1 = 0
+        self.var2 = 0
 
     def import_mzml(self, path, show_tic = True):
         
@@ -64,10 +70,12 @@ class MegaUniDec():
             self.plot_tic()     
 
     def plot_tic(self, show_peaks = False, show_windows = False, *args, **kwargs):
+
+        plt.figure(*args, **kwargs)
         plt.plot(self.tic[:, 0], self.tic[:, 1])
 
         if show_peaks == True:
-            plt.scatter(self.ticpeaks[:, 0], self.ticpeaks[:, 1], marker = 'x', *args, **kwargs)
+            plt.scatter(self.ticpeaks[:, 0], self.ticpeaks[:, 1], marker = 'x')
         if show_windows == True:
             for w in self.chrompeaks_tranges:
                 plt.axvspan(w[0], w[1], alpha = 0.3, color = 'orange') 
@@ -106,21 +114,16 @@ class MegaUniDec():
         if show_tic == True:
             self.plot_tic(show_peaks=True)
 
-    def get_peak_windows(self, show_tic = False):
-
+    def get_peak_windows(self, show_tic = False, *args, **kwargs):
+        """updates self.chrompeaks_tranges with peak windows above threshold value (self.peakthresh)"""
         self.pick_peaks()
 
-        self.chrompeaks_tranges = []
-        for t in self.ticFWHM:
-            frac = (t[0] - self.fwhmfrac*t[0])/2 # get fraction of FWHM to add/subtract to x1 and x2
-            lb = t[1][0] + frac  # get new x1 and x2 values for peak window
-            ub = t[1][1] - frac
-
-            self.chrompeaks_tranges.append([lb, ub])
+        self.chrompeaks_tranges = meg.get_window(self.tic, self.peakthresh)
+        
         self.chrom.chrompeaks_tranges = self.chrompeaks_tranges
 
         if show_tic == True:
-            self.plot_tic(show_peaks = True, show_windows = True)
+            self.plot_tic(show_peaks = True, show_windows = True, *args, **kwargs)
 
     def extract_peaks(self, show_spectra = False):
         """Extract defined windows and export to text files"""
@@ -133,19 +136,28 @@ class MegaUniDec():
             if show_spectra == True:
                 pass
     
-    def import_plate_map(self, platemap, size = 96, map_type = 'long'):
-        
+    def import_plate_map(self, platemap, size = 96, map_type = 'long', set_vars  = ['Time', 'Concentration']):
+        """Gets used wells and stipulated variables from plate map."""
         if map_type == 'short':
-            self.platemap = pm.short_map(platemap, size = size)
+            self.platemap = pm.short_map(platemap, size = size, header_names=self.header_names)
 
-        if map_type == 'long':
-            self.platemap = pm.plate_map(platemap, size = size)
+        else:
+            self.platemap = pm.plate_map(platemap, size = size, header_names=self.header_names)
 
         # remove empty wells
-        filt = platemap['Type'] != 'empty'
-        used = platemap[filt] # get used wells
+        filt = self.platemap['Type'] != 'empty'
+        used = self.platemap[filt] # get used wells
         self.wells = list(used.index) # get well ID's
-        self.time = np.array(used['Time'], dtype = float)
+
+        vars = ['var1', 'var2']
+        for i, v in enumerate(set_vars):
+            # setattr(self, v, np.array(used[v]))
+            setattr(self, vars[i], np.array(used[v]))
+
+        self.platesize = size
+        # check peaks - maybe move this somewhere else? potential to upload plate map before peak selection?
+        if len(self.chrompeaks_tranges) != len(used):
+            raise pm.PlateMapError("Used wells and TIC Peaks need to be the same, check peak threshold")
 
         self.platemapbool = True
 
@@ -179,19 +191,28 @@ class MegaUniDec():
                 path = folder+"/"+filename
 
                 self.meta.data.add_file(path = path)
-                typelist = [float, int] # if vars not float/int, assume to be iterable TODO: add try except clause 
-                if type(var1) not in typelist:
-                    self.meta.data.spectra[-1].var1 = var1[i]
-                else:
-                    self.meta.data.spectra[-1].var1 = var1
-                if type(var2) not in typelist:
-                    self.meta.data.spectra[-1].var2 = var2[i]
-                else:
-                    self.meta.data.spectra[-1].var2 = var2
-                if filenames != None:
-                    self.meta.data.spectra[-1].name = filenames[i]
-                else:
-                    self.meta.data.spectra[-1].name = filename 
+
+                # export vars - if platemap uploaded then use 
+                if self.platemapbool == False:
+                    typelist = [float, int] # if vars not float/int, assume to be iterable TODO: add try except clause 
+                    if type(var1) not in typelist:
+                        self.meta.data.spectra[-1].var1 = var1[i]
+                    else:
+                        self.meta.data.spectra[-1].var1 = var1
+                    if type(var2) not in typelist:
+                        self.meta.data.spectra[-1].var2 = var2[i]
+                    else:
+                        self.meta.data.spectra[-1].var2 = var2
+                    if filenames != None:
+                        self.meta.data.spectra[-1].name = filenames[i]
+                    else:
+                        self.meta.data.spectra[-1].name = filename 
+
+                if self.platemapbool == True:
+                    self.meta.data.spectra[-1].var1 = self.var1[i]
+                    self.meta.data.spectra[-1].var1 = self.var1[i]
+                    self.meta.data.spectra[-1].name = self.wells[i]
+
         
         self.meta.data.export_hdf5()
         print("{} created".format(self.hdf5_name))
@@ -251,6 +272,8 @@ class MegaUniDec():
 
         return self.meta
 
+
+    plot_plate(self, data_type = )
 
     def to_unidec(self):
         pass
