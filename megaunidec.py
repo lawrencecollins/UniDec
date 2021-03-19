@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 from metaunidec.meta_import_wizard.meta_import_wizard import *  
 from metaunidec.mudeng import *
 
+
+
 import megatools as meg 
 import plate_map as pm
 
@@ -30,6 +32,7 @@ class MegaUniDec():
         self.ticwinoffset = -0.1 # % offset of peak window selection (earlier tends to be better)
         self.peakwindow = 10 # detection window(local max plus or minus window)
         self.peakthresh = 0.4 # above threshold of peakthresh * max data intensity
+        self.peakthresh2 = None
         # self.ticpeaks = None
 
         # manual peak selection params
@@ -79,7 +82,8 @@ class MegaUniDec():
         if show_windows == True:
             for w in self.chrompeaks_tranges:
                 plt.axvspan(w[0], w[1], alpha = 0.3, color = 'orange') 
-
+                if self.peakthresh2 != None:
+                    plt.axhline(y = self.peakthresh2, color = 'r', linestyle = '--')
 
         plt.ylabel("Intensity / a.u.")
         plt.xlabel("retention time / mins")
@@ -89,7 +93,7 @@ class MegaUniDec():
         self.peaktimes = [self.firstpeak + i*self.peakspacing for i in range(self.peaktotal)]
         print(self.peaktimes)
 
-    def define_peaks(self, firstpeak, spacing, total, ll = 5, ul = 5):
+    def define_peaks(self, firstpeak, spacing, total, ll = 5, ul = 5): # move to mega tools - this function can probably be rendered obsolete
         """Manually defines peak windows in TIC"""
         
         self.firstpeak, self.peakspacing, self.peaktotal = firstpeak, spacing, total
@@ -118,7 +122,7 @@ class MegaUniDec():
         """updates self.chrompeaks_tranges with peak windows above threshold value (self.peakthresh)"""
         self.pick_peaks()
 
-        self.chrompeaks_tranges = meg.get_window(self.tic, self.peakthresh)
+        self.chrompeaks_tranges, self.peakthresh2 = meg.get_window(self.tic, self.peakthresh)
         
         self.chrom.chrompeaks_tranges = self.chrompeaks_tranges
 
@@ -136,7 +140,7 @@ class MegaUniDec():
             if show_spectra == True:
                 pass
     
-    def import_plate_map(self, platemap, size = 96, map_type = 'long', set_vars  = ['Time', 'Concentration']):
+    def import_plate_map(self, platemap, size = 96, map_type = 'long', set_vars  = ['Time', 'Reagent Concentration']):
         """Gets used wells and stipulated variables from plate map."""
         if map_type == 'short':
             self.platemap = pm.short_map(platemap, size = size, header_names=self.header_names)
@@ -273,7 +277,18 @@ class MegaUniDec():
         return self.meta
 
 
-    plot_plate(self, data_type = )
+    def plot_plate(self, data_type = 'massdat', colorby = 'Time', share_y = False, 
+                    *args, **kwargs):
+
+        eng = self.to_meta()
+        dfx, dfy = meg.get_data(eng = eng, data_type = data_type, platemap= self.platemap)
+        mapvars = list(self.header_names.keys())+ ['Valid']
+        mapvars.remove('Well ID')
+        
+        x, y = dfx.drop(mapvars, 1), dfy.drop(mapvars, 1)
+        pm.visualise_all_series(x, y, platemap = self.platemap, size = self.platesize, colorby = colorby, 
+                                share_y = share_y, *args, **kwargs)
+
 
     def to_unidec(self):
         pass

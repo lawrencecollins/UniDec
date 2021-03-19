@@ -4,30 +4,21 @@ import numpy as np
 import pandas as pd 
 import os
 
-def get_data(eng, data_type, platemap = None, index = None):
+def get_data(eng, data_type, platemap):
     """Returns 2 DataFrames or list (if no platemap)containing x and y data of a defined datatype (e.g. massdat) for each well. Can also concatenate with a platemap"""
 
     datax, datay = [], []
-    if index == None:
-        index = []
+    index = []
 
     for s in eng.data.spectra:
         temp = getattr(s, data_type)
         datax.append(temp[:, 0])
         datay.append(temp[:, 1])
-        # index.append(s.name[:-9]) # insert '-mean.txt as suffix?'
-        if index == None:
-            index.append(s.name) 
+        index.append(s.name) 
 
-    if index == None:
-        return datax, datay
-    else:
-        x, y = pd.DataFrame(datax, index = index), pd.DataFrame(datay, index = index)
-        
-        if platemap == None:
-            return x, y
-        else:
-            return pd.concat([platemap, x], axis = 1), pd.concat([platemap, y], axis = 1)
+    x, y = pd.DataFrame(datax, index = index), pd.DataFrame(datay, index = index)
+
+    return pd.concat([platemap, x], axis = 1), pd.concat([platemap, y], axis = 1)
 
 # def to_hdf5(hdf5_name, dir, filenames, var1, var2, overwrite = True):
 #     """Exports text files in directory to a single HDF5 file"""
@@ -54,5 +45,5 @@ def get_window(data, thresh):
             windows.append(temp)
             temp = []
 
-    return windows
+    return windows, thresh
 
