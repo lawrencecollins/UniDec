@@ -6,13 +6,15 @@ class Species():
     name:str = None
     area:float = None
     intensity:float = None
+    timepoint:list = None
+
         
 class TimePoint():
     def __init__(self):
         self.species = {}
 
 class Reaction():
-    def __init__(self, ID):
+    def __init__(self, ID, species = []):
         self.ID = ID
         self.time_series = {}
         self.metadata = {}
