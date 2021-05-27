@@ -129,7 +129,7 @@ class ChromEngine(MetaUniDec):
         self.data.v2name = "scanstart"
         self.data.import_vars(get_vnames=False)
 
-    def get_chrom_peaks(self, window=None):
+    def get_chrom_peaks(self, window=None, min = None, max = None): # LJC Edit 
         # Cleanup TIC Data
         ticdat = deepcopy(self.ticdat)
         ticdat = ud.gsmooth(ticdat, 2)
@@ -171,6 +171,12 @@ class ChromEngine(MetaUniDec):
                 tranges.append(range)
         self.chrompeaks = goodpeaks
         self.chrompeaks_tranges = tranges
+
+        tranges = np.array(tranges)
+        if min != None:
+            self.chrompeaks_tranges = tranges[np.all(tranges > min, axis = 1)]
+        if max != None:
+            self.chrompeaks_tranges = tranges[np.all(tranges < max, axis = 1)]
         return goodpeaks, tranges
 
     def add_manual_selection(self):
@@ -191,7 +197,7 @@ class ChromEngine(MetaUniDec):
             data = self.get_data_from_times(t[0], t[1])
             self.data.add_data(data, name=str(t[0]), attrs=self.attrs, export=False)
     
-    def add_chrom_peaks2(self):
+    def add_chrom_peaks2(self): # LJC Edit 
         # self.get_chrom_peaks()
         times = self.chrompeaks_tranges
         self.data.clear()
