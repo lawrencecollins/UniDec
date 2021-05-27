@@ -2,6 +2,7 @@ import plate_map as pm
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 from unidec_modules import unidectools as ud
 from copy import deepcopy
 
@@ -36,6 +37,47 @@ def read_in_long(map_path, sheet_names = ['plate map', 'species map']):
     return rmap, pmapdf
 
 # TODO: short map 
+
+def update_config(eng):
+    eng.config.subtype = 2 # background subtraction - subtract curved
+    eng.config.subbuff = 100 # background subtraction amount(subtract curved) 0 = 0ff, 100 = good amount when on
+    eng.config.datanorm = 0 # turn off data normalisation
+
+    # -- Deconvolution
+    eng.config.numit = 100 # number of iterations
+
+    # mass range (default = 5000.0 to 500000.0 Da)
+    eng.config.massub = 15000 # upper 
+    eng.config.masslb = 11000 # lower
+
+    eng.config.massbins = 0.1 # sample mass every 0.1 Da
+
+    # FWHM 
+    # eng.get_auto_peak_width()
+    eng.config.mzsig = 0 
+
+    # charge range
+    eng.config.startz = 1
+    eng.config.endz = 30
+
+    # smoothing 
+    eng.config.zzsig = 1 # charge smooth width (smooth charge state distributions)
+    eng.config.psig = 1 # smooth nearby points (point smooth width, some = 1)
+    eng.config.beta = 0 # suppress artifacts (beta, some = 50)
+
+    eng.config.psfun = 0 # Peak shape function (gaussian, lorentzian, split G/L)
+
+    # -- Peak Selection and plotting
+    eng.config.peaknorm = 0 # Normalise peaks (0 = off)
+    eng.config.datanorm = 0
+    eng.config.peakwindow = 10 # peak window / Da
+    eng.config.exnorm = 0 # extract normalisation
+    eng.config.peakthresh = 0.05
+    # eng.config.nativeub = 10
+    # eng.config.nativelb = -10
+    eng.data.export_hdf5()
+
+    return eng
 
 def update_vars(eng, pmap, skip_empty = False, groupby = 'Time'):
     """Updates vars for each spectra with well ID (starting from top) and stpulated 'groupby' parameter (usually 'Time')"""
@@ -177,24 +219,57 @@ def integrate_all(eng, int_range = None):
         s.integrals = peak_ints
 
     return eng
+    
+def set_spectra_colors(eng, cmap = 'rainbow'):
+    
+    cmap = plt.get_cmap(cmap)
+    colors = cmap(np.linspace(0, 1, len(eng.data.spectra)))
+    for i, s in enumerate(eng.data.spectra):
+        s.color = colors[i]
+    return eng
 
-def plot_all(eng, show_ints = True, xlim = []):
+
+def plot_all(eng, show_ints = True, xlim = [], combine = False, cmap = 'Set1'):
     """Plots each spectra stored in Unichrom class"""
-
+    eng = set_spectra_colors(eng, cmap)
     spectra = eng.data.spectra
+    xcounter = 0
+    ycounter = 0
+
+    if combine == True:
+        fig, ax = plt.subplots(dpi = 100)
 
     for s in spectra:
-        plt.figure()
-        plt.plot(s.massdat[:, 0], s.massdat[:, 1])
+        if combine == False:
+            fig, ax = plt.subplots()
+            ax.plot(s.massdat[:, 0], s.massdat[:, 1], color = s.color, linewidth = 0.5)
 
+        if combine == True:        
+            ax.plot(s.massdat[:, 0]+xcounter, s.massdat[:, 1]+ycounter, color = s.color, linewidth = 0.5, label = s.var1)
+            
+        ax.set_xlabel('Mass / Da')
+        ax.set_ylabel('Intensity')
+        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0e'))
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        
         for i, p in enumerate(s.pks.peaks):
-            plt.scatter(p.mass, p.height, marker = 'x', color = p.color)
+            if combine == False:
+                ax.scatter(p.mass, p.height, marker = '^', color = p.color, s=10)
             if xlim != []:
-                plt.xlim(xlim[0], xlim[1])
+                ax.set_xlim(xlim[0], xlim[1])
+                if combine == True:
+                    ax.set_xlim(xlim[0], xlim[1]+xcounter)
             if show_ints == True:
                 ints = s.integrals[i][1]
-                plt.fill_between(ints[:, 0], ints[:, 1], color = p.color)
-                
+                if combine == False:
+                    ax.fill_between(ints[:, 0], ints[:, 1], color = p.color, alpha = 0.3)
+                else:
+                    ax.fill_between(ints[:, 0]+xcounter, ints[:, 1]+ycounter, ycounter, color = p.color, alpha = 0.25)
+                    ax.legend()
+        xcounter+=s.massdat[:, 0].max()*0.05
+        ycounter+=s.massdat[:, 1].max()*0.05
+
     plt.show()
 
 def match_peaks(eng, reactions):
@@ -213,11 +288,11 @@ def match_peaks(eng, reactions):
     return reactions
 
 def get_data_from_dct(dct, groupby = 'time', data = 'integral'):
-    for rkey, rval in dct.items():
+    
     time = []
     speciesdct = {}
     speciestimedct = {}
-    for t in rval:
+    for t in dct:
         tattr = getattr(t, groupby)
         time.append(tattr)
         for s in t.species:
@@ -229,15 +304,24 @@ def get_data_from_dct(dct, groupby = 'time', data = 'integral'):
                 speciesdct[s.name] = [getattr(s, data)]
                 speciestimedct[s.name] = [t.time]
 
-return speciesdct, speciestimedct
+    return speciesdct, speciestimedct
 
+def plot_data(speciesdct, speciestimedct, combine = True, *args, **kwargs):
 
-def plot_data(speciesdct, speciestimedct):
-
+    fig, ax = plt.subplots()
     for key, val in speciesdct.items():
-        plt.plot(speciestimedct[key], val, marker = 'x')
-        plt.xlabel('time /s')
-        plt.ylabel('AUC')
-        
+        if combine == False:
+            fig, ax = plt.subplots()
+        ax.plot(speciestimedct[key], val, marker = 'x', label = key, *args, **kwargs)
+        ax.set_xlabel('time / s')
+        ax.set_ylabel('AUC')
+        y_labels = ax.get_yticks()
+        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0e'))
+        ax.legend(bbox_to_anchor=(1, 1), loc = 'upper left', frameon = False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
     plt.show()
     
+# TODO: Set unique colour for each species, choice of cmap 
+# TODO: Compare relative AUC's
+# TODO: Add functionality to UniChrom API
