@@ -156,13 +156,13 @@ class Time:
         self.data_masses= np.array([p.mass for p in self.spectra.pks.peaks])
         self.pks = np.array([p for p in self.spectra.pks.peaks])
 
-def update_spectra (reactions_groupby, eng):
+def update_spectra (reactions, eng):
     spectra = {s.var1:s for s in eng.data.spectra}    
-    for rkey, rval in reactions_groupby.items():
+    for rkey, rval in reactions.items():
             for t in rval:
                 t.spectra = spectra[t.coord]
                 t.extract_masses()
-    return reactions_groupby
+    return reactions
 
 def process(rmap, pmap, eng = None, groupby = 'Time', skip_empty = True):
     reactions_species = {}
@@ -306,7 +306,7 @@ def get_data_from_dct(dct, groupby = 'time', data = 'integral'):
 
     return speciesdct, speciestimedct
 
-def plot_data(speciesdct, speciestimedct, combine = True, *args, **kwargs):
+def _plot_data(speciesdct, speciestimedct, combine = True, *args, **kwargs):
 
     fig, ax = plt.subplots()
     for key, val in speciesdct.items():
@@ -322,6 +322,10 @@ def plot_data(speciesdct, speciestimedct, combine = True, *args, **kwargs):
         ax.spines['top'].set_visible(False)
     plt.show()
     
+def plot_data(reactions, *args, **kwargs):
+    for rkey, rval in reactions.items():
+        data, time = get_data_from_dct(rval)
+        _plot_data(data, time, *args, **kwargs)
 # TODO: Set unique colour for each species, choice of cmap 
 # TODO: Compare relative AUC's
 # TODO: Add functionality to UniChrom API
