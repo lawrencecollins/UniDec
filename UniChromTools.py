@@ -103,16 +103,18 @@ def update_vars(eng, pmap, skip_empty = False, groupby = 'Time'):
 
 def plot_tic(eng, peak_windows = False, *args, **kwargs):
 
-    plt.figure(*args, **kwargs)
-    plt.plot(eng.tic[:, 0], eng.tic[:, 1])
+    fig, ax = plt.subplots(*args, **kwargs)
+    ax.plot(eng.tic[:, 0], eng.tic[:, 1])
 
     if peak_windows == True:
         for w in eng.chrompeaks_tranges:
-            plt.axvspan(w[0], w[1], alpha = 0.3, color = 'orange') 
+            ax.axvspan(w[0], w[1], alpha = 0.3, color = 'orange') 
 
-    plt.ylabel("Intensity / a.u.")
-    plt.xlabel("retention time / mins")
-
+    ax.set_ylabel("Intensity / a.u.")
+    ax.set_xlabel("retention time / mins")
+    ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.0e'))
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
     plt.show() 
 
 class Species:
@@ -229,7 +231,7 @@ def set_spectra_colors(eng, cmap = 'rainbow'):
     return eng
 
 
-def plot_all(eng, show_ints = True, xlim = [], combine = False, cmap = 'Set1'):
+def plot_all(eng, dtype = 'massdat', show_ints = True, xlim = [], combine = False, cmap = 'Set1'):
     """Plots each spectra stored in Unichrom class"""
     eng = set_spectra_colors(eng, cmap)
     spectra = eng.data.spectra
@@ -240,12 +242,13 @@ def plot_all(eng, show_ints = True, xlim = [], combine = False, cmap = 'Set1'):
         fig, ax = plt.subplots(dpi = 100)
 
     for s in spectra:
+        data = getattr(s, dtype)
         if combine == False:
             fig, ax = plt.subplots()
-            ax.plot(s.massdat[:, 0], s.massdat[:, 1], color = s.color, linewidth = 0.5)
+            ax.plot(data[:, 0], data[:, 1], color = s.color, linewidth = 0.5)
 
         if combine == True:        
-            ax.plot(s.massdat[:, 0]+xcounter, s.massdat[:, 1]+ycounter, color = s.color, linewidth = 0.5, label = s.var1)
+            ax.plot(data[:, 0]+xcounter, data[:, 1]+ycounter, color = s.color, linewidth = 0.5, label = s.var1)
             
         ax.set_xlabel('Mass / Da')
         ax.set_ylabel('Intensity')
@@ -253,22 +256,23 @@ def plot_all(eng, show_ints = True, xlim = [], combine = False, cmap = 'Set1'):
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
         
-        for i, p in enumerate(s.pks.peaks):
-            if combine == False:
-                ax.scatter(p.mass, p.height, marker = '^', color = p.color, s=10)
-            if xlim != []:
-                ax.set_xlim(xlim[0], xlim[1])
-                if combine == True:
-                    ax.set_xlim(xlim[0], xlim[1]+xcounter)
-            if show_ints == True:
-                ints = s.integrals[i][1]
+        if dtype == 'massdat':
+            for i, p in enumerate(s.pks.peaks):
                 if combine == False:
-                    ax.fill_between(ints[:, 0], ints[:, 1], color = p.color, alpha = 0.3)
-                else:
-                    ax.fill_between(ints[:, 0]+xcounter, ints[:, 1]+ycounter, ycounter, color = p.color, alpha = 0.25)
-                    ax.legend()
-        xcounter+=s.massdat[:, 0].max()*0.05
-        ycounter+=s.massdat[:, 1].max()*0.05
+                    ax.scatter(p.mass, p.height, marker = '^', color = p.color, s=10)
+                if xlim != []:
+                    ax.set_xlim(xlim[0], xlim[1])
+                    if combine == True:
+                        ax.set_xlim(xlim[0], xlim[1]+xcounter)
+                if show_ints == True:
+                    ints = s.integrals[i][1]
+                    if combine == False:
+                        ax.fill_between(ints[:, 0], ints[:, 1], color = p.color, alpha = 0.3)
+                    else:
+                        ax.fill_between(ints[:, 0]+xcounter, ints[:, 1]+ycounter, ycounter, color = p.color, alpha = 0.25)
+                        ax.legend()
+        xcounter+=data[:, 0].max()*0.05
+        ycounter+=data[:, 1].max()*0.05
 
     plt.show()
 
@@ -287,7 +291,14 @@ def match_peaks(eng, reactions):
                     t.species[minimum].integral = t.pks[i].integral[0]
     return reactions
 
-def get_data_from_dct(dct, groupby = 'time', data = 'integral'):
+def get_relative(dct):
+    for species, vals in dct.items():
+        arr = np.array(vals)
+        maxval = np.nanmax(arr)
+        dct[species] = arr / maxval
+    return dct
+
+def get_data_from_dct(dct, groupby = 'time', data = 'integral', relative = False):
     
     time = []
     speciesdct = {}
@@ -303,7 +314,8 @@ def get_data_from_dct(dct, groupby = 'time', data = 'integral'):
             else:
                 speciesdct[s.name] = [getattr(s, data)]
                 speciestimedct[s.name] = [t.time]
-
+    if relative :
+        speciesdct = get_relative(speciesdct)
     return speciesdct, speciestimedct
 
 def _plot_data(speciesdct, speciestimedct, combine = True, *args, **kwargs):
@@ -322,9 +334,9 @@ def _plot_data(speciesdct, speciestimedct, combine = True, *args, **kwargs):
         ax.spines['top'].set_visible(False)
     plt.show()
     
-def plot_data(reactions, *args, **kwargs):
+def plot_data(reactions, relative = False, *args, **kwargs):
     for rkey, rval in reactions.items():
-        data, time = get_data_from_dct(rval)
+        data, time = get_data_from_dct(rval, relative = relative)
         _plot_data(data, time, *args, **kwargs)
 # TODO: Set unique colour for each species, choice of cmap 
 # TODO: Compare relative AUC's
