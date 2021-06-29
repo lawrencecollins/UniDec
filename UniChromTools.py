@@ -120,8 +120,7 @@ def plot_tic(eng, peak_windows = False, *args, **kwargs):
 class Species:
     def __init__(self, dictionary, name, rmap = None, pmap = None, peak = None, integral = []):
         self.__dict__.update(dictionary)
-        # self.__name__ = name
-        self.name = name
+        self.__name__ = name
         self.peak = peak
         self.rmap = rmap
         self.pmap = pmap
@@ -130,7 +129,7 @@ class Species:
     def __repr__(self):
         keys = [key for key, val in self.__dict__.items()]
         vals = [val for key, val in self.__dict__.items()]
-        return "<"+self.name+ "("+", ".join("{} = {}".format(*t) for t in zip(keys, vals))+")>"        
+        return "<"+self.__name__+ "("+", ".join("{} = {}".format(*t) for t in zip(keys, vals))+")>"        
 
 class Time:
     """Class that contains the data sorted by a stipulated groupby variable (normally time). """
@@ -154,7 +153,7 @@ class Time:
         
     def extract_masses(self):
         self.theory_masses = np.array([sp.Mass for sp in self.species])
-        self.species_name = np.array([sp.name for sp in self.species], dtype = str)
+        self.species_name = np.array([sp.__name__ for sp in self.species], dtype = str)
         self.data_masses= np.array([p.mass for p in self.spectra.pks.peaks])
         self.pks = np.array([p for p in self.spectra.pks.peaks])
 
@@ -308,12 +307,12 @@ def get_data_from_dct(dct, groupby = 'time', data = 'integral', relative = False
         time.append(tattr)
         for s in t.species:
             
-            if s.name in speciesdct:
-                speciesdct[s.name].append(getattr(s, data))
-                speciestimedct[s.name].append(tattr)
+            if s.__name__ in speciesdct:
+                speciesdct[s.__name__].append(getattr(s, data))
+                speciestimedct[s.__name__].append(tattr)
             else:
-                speciesdct[s.name] = [getattr(s, data)]
-                speciestimedct[s.name] = [t.time]
+                speciesdct[s.__name__] = [getattr(s, data)]
+                speciestimedct[s.__name__] = [t.time]
     if relative :
         speciesdct = get_relative(speciesdct)
     return speciesdct, speciestimedct
